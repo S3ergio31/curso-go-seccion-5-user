@@ -50,9 +50,16 @@ func (r repository) GetAll(filters Filters, offset, limit int) ([]domain.User, e
 
 func (r repository) Get(id string) (*domain.User, error) {
 	user := domain.User{ID: id}
-	if err := r.db.First(&user).Error; err != nil {
+	err := r.db.First(&user).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, ErrorUserNotFound{id}
+	}
+
+	if err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }
 
@@ -65,7 +72,7 @@ func (r repository) Delete(id string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("user %s does not exists", id)
+		return ErrorUserNotFound{id}
 	}
 
 	return nil
@@ -96,7 +103,7 @@ func (r repository) Update(id string, firstName, lastName, email, phone *string)
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("user %s does not exists", id)
+		return ErrorUserNotFound{id}
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 
@@ -72,11 +73,11 @@ func makeCreateEndpoint(s Service) endpoint.Endpoint {
 		createRequest := request.(CreateRequest)
 
 		if createRequest.FirstName == "" {
-			return nil, response.BadRequest("first name is required")
+			return nil, response.BadRequest(ErrorFirstNameRequired.Error())
 		}
 
 		if createRequest.LastName == "" {
-			return nil, response.BadRequest("last name is required")
+			return nil, response.BadRequest(ErrorLastNameRequired.Error())
 		}
 
 		user, err := s.Create(
@@ -99,8 +100,12 @@ func makeGetEndpoint(s Service) endpoint.Endpoint {
 		req := request.(GetRequest)
 		user, err := s.Get(req.ID)
 
-		if err != nil {
+		if errors.As(err, &ErrorUserNotFound{}) {
 			return nil, response.NotFound(err.Error())
+		}
+
+		if err != nil {
+			return nil, response.InternalServerError(err.Error())
 		}
 
 		return response.Ok("success", user, nil), nil
@@ -142,11 +147,11 @@ func makeUpdateEndpoint(s Service) endpoint.Endpoint {
 		updateRequest := request.(UpdateRequest)
 
 		if updateRequest.FirstName != nil && *updateRequest.FirstName == "" {
-			return nil, response.BadRequest("first name is required")
+			return nil, response.BadRequest(ErrorFirstNameRequired.Error())
 		}
 
 		if updateRequest.LastName != nil && *updateRequest.LastName == "" {
-			return nil, response.BadRequest("last name is required")
+			return nil, response.BadRequest(ErrorLastNameRequired.Error())
 		}
 
 		err := s.Update(
@@ -157,8 +162,12 @@ func makeUpdateEndpoint(s Service) endpoint.Endpoint {
 			updateRequest.Phone,
 		)
 
+		if errors.As(err, &ErrorUserNotFound{}) {
+			return nil, response.NotFound(err.Error())
+		}
+
 		if err != nil {
-			return nil, response.BadRequest("user does not exist")
+			return nil, response.InternalServerError(err.Error())
 		}
 
 		return response.Ok("success", nil, nil), nil
@@ -170,8 +179,12 @@ func makeDeleteEndpoint(s Service) endpoint.Endpoint {
 		req := request.(DeleteRequest)
 		err := s.Delete(req.ID)
 
+		if errors.As(err, &ErrorUserNotFound{}) {
+			return nil, response.NotFound(err.Error())
+		}
+
 		if err != nil {
-			return nil, response.NotFound("user does not exists")
+			return nil, response.InternalServerError(err.Error())
 		}
 
 		return response.Ok("success", nil, nil), nil
