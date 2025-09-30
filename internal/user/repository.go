@@ -59,9 +59,15 @@ func (r repository) Get(id string) (*domain.User, error) {
 func (r repository) Delete(id string) error {
 	user := domain.User{ID: id}
 
-	if err := r.db.Delete(&user).Error; err != nil {
-		return err
+	result := r.db.Delete(&user)
+	if result.Error != nil {
+		return result.Error
 	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("user %s does not exists", id)
+	}
+
 	return nil
 }
 
@@ -84,9 +90,15 @@ func (r repository) Update(id string, firstName, lastName, email, phone *string)
 		values["phone"] = *phone
 	}
 
-	if err := r.db.Model(&domain.User{}).Where("id = ?", id).Updates(values).Error; err != nil {
-		return err
+	result := r.db.Model(&domain.User{}).Where("id = ?", id).Updates(values)
+	if result.Error != nil {
+		return result.Error
 	}
+
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("user %s does not exists", id)
+	}
+
 	return nil
 }
 
